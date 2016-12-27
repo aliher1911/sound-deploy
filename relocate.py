@@ -7,8 +7,6 @@ import shutil
 SRC_DIR='Samples'
 DST_DIR='Destination'
 
-#
-
 # Same name, same or no year, maybe multiple discs
 class Album:
     def __init__(self):
