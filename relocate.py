@@ -102,56 +102,83 @@ class Mp3Tags:
             new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self._albumTitle)
         new_tags.save(filename)
 
-'''
+class FlacTags:
+    def __init__(self, filename):
+        self.tags = mutagen.flac.FLAC(filename)
+        self._artist = None
+        self._trackName = None
+        self._albumTitle = None
 
-ALBUM_TAG = u'album'
-YEAR_TAG = u'date'
-TITLE_TAG = u'title'
-ARTIST_TAG = u'artist'
-ARTITS2_TAG = u'albumartist'
+    # reading fields
 
-class FlacFile:
-    def __init__(self, filename, album=None):
-        self.album = album
-        self.filename = filename
-        self.file = mutagen.flac.FLAC(open(filename))
+    def trackArtist(self):
+        return self._tag('artist')
 
-    def path_components(self):
-        return [
-            self.get_artist(),
-            self.get_year() + self.file[ALBUM_TAG][0] + self.get_extras()
-        ]
+    def albumArtist(self):
+        return self._tag('albumartist')
 
-    def get_artist(self):
-        # todo: handle compilation here
-        return self.file[ARTIST_TAG][0]
+    def trackName(self):
+        return self._tag('title')
 
-    def bit_rate(self):
-        pass
+    def albumName(self):
+        return self._tag('album')
 
-    def real_year(self):
-        return self.file[YEAR_TAG][0] if YEAR_TAG in self.file else u''
+    def year(self):
+        return self._tag('date')
 
-    def get_year(self):
-        if self.album:
-            return self.album.get_year() + u'-'
-        else:
-            return self.real_year()
+    def trackNumber(self):
+        return self._tag('tracknumber')
 
-    def get_extras(self):
-        disc = self.get_disc() 
-        live = self.get_live()
-        if disc or live:
-            return u' ' + disc + live
-        else:
-            return u''
+    def discNumber(self):
+        return self._tag('discnumber')
 
-    def get_disc(self):
-        return u''
+    def totalDiscs(self):
+        totd = self._tag('disctotal')
+        return self._tag('totaldiscs') if not totd else totd
 
-    def get_live(self):
-        return u''
-'''
+    def compilation(self):
+        return self._tag('compilation')
+
+    def live(self):
+        comm = self._tag('comment')
+        return comm and comm.lower().find('live') != -1
+
+    def soundtrack(self):
+        comm = self._tag('comment')
+        return comm and comm.lower().find('soundtrack') != -1
+
+    def type(self):
+        return ".flac"
+
+    def _tag(self, name):
+        return self.tags[name][0] if name in self.tags else None
+
+    # updating fields
+
+    # Overwrite to make compilations, soundtracks etc
+    def setArtist(self, artist):
+        self._artist = artist
+
+    # Overwrite to make compilations, soundtracks etc
+    def setTrackName(self, trackName):
+        self._trackName = trackName
+
+    # Title to include artist for compilations etc
+    def setTitle(self, albumTitle):
+        self._albumTitle = albumTitle
+
+    def save(self, filename):
+        if not self._artist and not self._trackName and not self._albumTitle:
+            print "Tags unchanged for " + filename
+            return
+        new_tags = mutagen.flac.FLAC(filename)
+        if self._artist:
+            new_tags['artist'] = self._artist
+        if self._trackName:
+            new_tags['title'] = self._trackName
+        if self._albumTitle:
+            new_tags['album'] = self._albumTitle
+        new_tags.save(filename)
 
 DISALLOWED = re.compile('[\\\\/:?*]')
 
@@ -224,15 +251,20 @@ class Album:
         return None if len(vals)!=1 else vals.pop()
 
     def analyze_tags(self):
-        self._artist = self._target_artist()
-        self._album = self._target_album()
-        for file in self._files:
-            title = self._target_name(file[2])
-            file[1] = escape(title)
-            file[2].setArtist(self._artist)
-            file[2].setTitle(self._album)
-            #file[2].setTrackName(title)            
-        self._processed = True
+        try:
+            self._artist = self._target_artist()
+            self._album = self._target_album()
+            for file in self._files:
+                title = self._target_name(file[2])
+                file[1] = escape(title)
+                file[2].setArtist(self._artist)
+                file[2].setTitle(self._album)
+                #file[2].setTrackName(title)            
+            self._processed = True
+            return True
+        except Exception as e:
+            print "Ignoring album : " + e.message
+            return False
 
     def files(self):
         if not self._processed:
@@ -240,12 +272,13 @@ class Album:
         return self._files
 
 def read_info(filename, album=None):
-    print "Attempting to read " + filename
     upcase = filename.upper()
     if upcase.endswith('.MP3'):
         return Mp3Tags(filename)
+    elif upcase.endswith('.FLAC'):
+        return FlacTags(filename)
     else:
-        print "Unknown file type"
+        print "Unknown file type for " + filename
         return None
 
 def scan_directory(path, files):
@@ -277,7 +310,7 @@ def scan_tree(root):
 
 def move_albums(source, destination):
     for album in scan_tree(source):
-        album.analyze_tags()
-        move_album(album, destination)
+        if album.analyze_tags():
+            move_album(album, destination)
 
 move_albums(SRC_DIR, DST_DIR)
