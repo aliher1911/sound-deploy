@@ -5,9 +5,7 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
 import mutagen.flac
 import shutil
-
-SRC_DIR='Samples'
-DST_DIR='Destination'
+import argparse
 
 class Mp3Tags:
     def __init__(self, filename):
@@ -186,9 +184,10 @@ def escape(filename):
     return DISALLOWED.sub('_', filename)
 
 class Album:
-    def __init__(self):
+    def __init__(self, path):
         self._files = []
         self._processed = False
+        self._path = path
 
     def add(self, filename, tags):
         self._files.append([filename, '', tags])
@@ -259,7 +258,6 @@ class Album:
                 file[1] = escape(title)
                 file[2].setArtist(self._artist)
                 file[2].setTitle(self._album)
-                #file[2].setTrackName(title)            
             self._processed = True
             return True
         except Exception as e:
@@ -270,6 +268,39 @@ class Album:
         if not self._processed:
             raise Exception('Internal error. No tags were fixed')
         return self._files
+
+    def path(self):
+        return self._path
+
+class History:
+    def __init__(self, histfile='relocate.hist'):
+        self.history = set()
+        try:
+            with open('relocate.hist', 'r') as source:
+                for line in source:
+                    self.history.add(line.strip())
+            self.file = open('relocate.hist', 'a')
+        except IOError:
+            self.file = open('relocate.hist', 'w')
+
+    def has(self, name):
+        return name in self.history
+
+    def remember(self, name):
+        self.history.add(name)
+        self.file.write(name + '\n')
+        # self.file.flush()
+
+    def close(self):
+        self.file.close()
+
+class NoHistory:
+    def has(self, file):
+        return False
+    def remember(self, file):
+        pass
+    def close(self):
+        pass
 
 def read_info(filename, album=None):
     upcase = filename.upper()
@@ -283,7 +314,7 @@ def read_info(filename, album=None):
 
 def scan_directory(path, files):
     print "Processing directory %s" % path
-    album = Album()
+    album = Album(path)
     for name in files:
         src = os.path.join(path, name)
         infos = read_info(src)
@@ -301,16 +332,67 @@ def move_album(album, destination):
         shutil.copy(file[0], dest)
         file[2].save(dest)
 
-def scan_tree(root):
-    for (path, dirs, names) in os.walk(root):
-        tags = scan_directory(path, names)
-        if not tags:
-            continue
-        yield tags
+def recursive(root):
+    print "Scanning '" + root + "' recursively"
+    def iterate():
+        print "Iterating walk"
+        return os.walk(root)
+    return iterate
 
-def move_albums(source, destination):
-    for album in scan_tree(source):
+def single(root):
+    print 'Scanning ' + root
+    def iterate():
+        files = [name for name in os.listdir(root) 
+                      if os.path.isfile(os.path.join(root, name))]
+        yield (root, [], files)
+    return iterate
+
+def tree_scanner(source, history):
+    def generate():
+        print "Scan tree"
+        for (path, dirs, names) in source():
+            if history.has(path):
+                continue
+            print path
+            tags = scan_directory(path, names)
+            if not tags:
+                continue
+            yield tags
+    return generate
+
+def process_albums(scanner, function, history):
+    for album in scanner():
+        if function(album):
+            history.remember(album.path())
+
+def move_function(destination):
+    def move_valid(album):
         if album.analyze_tags():
             move_album(album, destination)
+            return True
+        return False
+    return move_valid
 
-move_albums(SRC_DIR, DST_DIR)
+
+def main():
+    parser = argparse.ArgumentParser(description='Fiddle with file tags')
+    parser.add_argument('-a', choices=['deploy', 'fixup'], default='deploy', help='Action')
+    parser.add_argument('src', nargs=1)
+    parser.add_argument('dst', nargs='?')
+    parser.add_argument('-d', choices=['fiio', 'archive'], default='fiio')
+    parser.add_argument('-i', type=bool, default=False, help='Intractive')
+    parser.add_argument('--recursive', dest='recursive', action='store_true', help='Recursive directory scan')
+    parser.add_argument('--no-recursive', dest='recursive', action='store_false', help='Scan single directory only')
+    parser.add_argument('--history', dest='history', action='store_true', help='Use history file to avoid rescan')
+    parser.set_defaults(recursive=True)
+    parser.set_defaults(history=False)
+    args = parser.parse_args()
+    # fixme: error should be user friendly
+    assert (args.a == 'fixup' or not args.dst is None), "Deploy mode requires destination path"
+
+    history = History() if args.history else NoHistory()
+    files = recursive(args.src[0]) if args.recursive else single(args.src[0])
+    process_albums(tree_scanner(files, history), move_function(args.dst), history)
+
+if __name__ == '__main__':
+    main()
