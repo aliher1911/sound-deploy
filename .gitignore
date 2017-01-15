@@ -88,5 +88,12 @@ ENV/
 # Rope project settings
 .ropeproject
 
+# Other project
 Mp3Checker
+
+# Mac os nonsense
 .DS_Store
+
+# Default data directories
+Samples
+Destination
