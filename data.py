@@ -1,4 +1,3 @@
-import re
 import os
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
@@ -173,11 +172,6 @@ class FlacTags:
             new_tags['album'] = self._albumTitle
         new_tags.save(filename)
 
-DISALLOWED = re.compile('[\\\\/:?*]')
-
-def escape(filename):
-    return DISALLOWED.sub('_', filename)
-
 class Album:
     def __init__(self, path):
         # contains orig_filename, new_filename, tags object
@@ -190,62 +184,12 @@ class Album:
     def empty(self):
         return len(self._files) == 0
 
-    def destination(self):
-        artist = escape(self._artist)
-        album = escape(self._album)
-        return os.path.join(artist, album)
-
-    def _target_artist(self):
-        if self._all_off(lambda x: x.compilation()):
-            return 'Compilations'
-        if self._all_off(lambda x: x.soundtrack()):
-            return 'Soundtracks'
-        artist = self._all_off(lambda x: x.trackArtist())
-        if artist:
-            return artist
-        artist = self._all_off(lambda x: x.albumArtist())
-        if artist:
-            return artist
-        # maybe fix atist from directory?
-        raise Exception("Can't identify artist for " + self._files[0][0])        
-
-    def _target_album(self):
-        album = self._all_off(lambda x: x.albumName())
-        if album:
-            path = []
-            year = self._all_off(lambda x: x.year())
-            if year:
-                path.append(year)
-            path.append(album)
-            discs = self._all_off(lambda x: x.totalDiscs())
-            disc = self._all_off(lambda x: x.discNumber())
-            if discs and discs > 1 or disc and disc > 1:
-                path.append('[Disc ' + disc + ']')
-            if self._all_off(lambda x: x.live()):
-                path.append('Live')
-            return '-'.join(path)
-        raise Exception("Can't identify album for " + self._files[0][0])
-
-    def _target_name(self, tags):
-        path = []
-        track = tags.trackNumber()
-        if track:
-            if len(track)==1:
-                track = '0' + track
-            path.append(track)
-        track = tags.trackName()
-        if not track:
-            raise Exception("No track name")
-        path.append(track)
-        # Add optional artist for compilations
-        return '-'.join(path) + tags.type()
-
-    def _all_off(self, read):
+    def all_off(self, read):
         vals = self.all_values(read)
-        return None if len(vals)!=1 else vals.pop()
+        return None if len(vals)!=1 else vals[0]
 
     def all_values(self, read):
-        return set(map(lambda x: read(x[2]), self._files))
+        return filter(lambda x: x, set(map(lambda x: read(x[2]), self._files)))
 
     def analyze_tags(self):
         try:
@@ -266,6 +210,3 @@ class Album:
 
     def path(self):
         return self._path
-
-    def all_artists(self):
-        return 
