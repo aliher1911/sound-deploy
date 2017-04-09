@@ -30,6 +30,9 @@ def fiio_destination(destination, album):
     album = escape(target_album(album))
     return os.path.join(destination, artist, album)
 
+def fiio_filename(album, file):
+    pass
+
 def target_artist(album):
     if album.all_off(lambda x: x.compilation()):
         return 'Compilations'
