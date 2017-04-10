@@ -172,6 +172,31 @@ class FlacTags:
             new_tags['album'] = self._albumTitle
         new_tags.save(filename)
 
+# Aggregation result
+class Aggregate:
+    # values as collected from files, unique
+    def __init__(self, values):
+        self._values = list(values)
+        self._values.sort()
+
+    # No tracks has no value
+    def empty(self):
+        return len(self._values) == 1 and self._values[0] is None
+
+    # All tracks have the same value
+    def singleValue(self):
+        return len(self._values) == 1 and self._values[0] is not None
+
+    def inconsistent(self):
+        return len(self._values) > 1
+
+    # All unique values including none
+    def values(self):
+        return self._values
+
+    def nonEmpty(self):
+        return filter(lambda x: x, self._values)
+
 class Album:
     def __init__(self, path):
         # contains orig_filename, new_filename, tags object
@@ -185,25 +210,33 @@ class Album:
         return len(self._files) == 0
 
     def all_off(self, read):
-        vals = self.all_values(read)
+        vals = self.all_values2(read)
         return None if len(vals)!=1 else vals[0]
+
+    # All values including Nulls
+    def all_values2(self, read):
+        return list(set(map(lambda x: read(x[2]), self._files)))
+
+    # All values excluding Nulls
+    def all_values(self, read):
+        return filter(lambda x: x, self.all_values2(read))
 
     def all_values(self, read):
         return filter(lambda x: x, set(map(lambda x: read(x[2]), self._files)))
 
-    def analyze_tags(self):
-        try:
-            self._artist = self._target_artist()
-            self._album = self._target_album()
-            for file in self._files:
-                title = self._target_name(file[2])
-                file[1] = escape(title)
-                file[2].setArtist(self._artist)
-                file[2].setTitle(self._album)
-            return True
-        except Exception as e:
-            print "Ignoring album : " + e.message
-            return False
+    # def analyze_tags(self):
+    #     try:
+    #         self._artist = self._target_artist()
+    #         self._album = self._target_album()
+    #         for file in self._files:
+    #             title = self._target_name(file[2])
+    #             file[1] = escape(title)
+    #             file[2].setArtist(self._artist)
+    #             file[2].setTitle(self._album)
+    #         return True
+    #     except Exception as e:
+    #         print "Ignoring album : " + e.message
+    #         return False
 
     def files(self):
         return self._files

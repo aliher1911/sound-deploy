@@ -2,22 +2,50 @@ import os
 import re
 import shutil
 
+class UpdateKeys:
+    ARTIST_DIR = 'artist_dir'
+    ALBUM_DIR = 'album_dir'
+    FILE_NAME = 'file_name'
+
+    ALBUM_TITLE = 'album'
+    TRACK_TITLE = 'track'
+    TRACKNUM = 'tracknum'
+    ARTIST = 'artist'
+    COMPILATION = 'compilation'
+
 def move_function(destination):
     def move_valid(album):
-        if enrich_tags(album):
-            move_album(album, destination)
+        print "Moving %s" % (album.path())
+        updates = validate_tags(album)
+        if updates:
+            move_album(album, destination, updates)
             return True
         return False
     return move_valid
 
-def move_album(album, destination):
-    dst = fiio_destination(destination, album)
+def move_album(album, destination, updates):
+    dst = fiio_destination(destination, album, updates)
     print "Moving album to %s" % dst
     if not os.path.isdir(dst):
         os.makedirs(dst)
-    for file in album.files():
-        dest = os.path.join(dst, file[1])
+    all_files = album.files()
+    for i in range(len(all_files)):
+        file = all_files[i]
+        update = updates[i]
+        dest = os.path.join(dst, update[UpdateKeys.FILE_NAME])
         shutil.copy(file[0], dest)
+        # Set tags
+        if UpdateKeys.ALBUM_TITLE in update:
+            file[2].setTitle(update[UpdateKeys.ALBUM_TITLE])
+        if UpdateKeys.TRACK_TITLE in update:
+            file[2].setTrackName(update[UpdateKeys.TRACK_TITLE])
+        if UpdateKeys.TRACKNUM in update:
+            file[2].setTrackNum(update[UpdateKeys.TRACKNUM])
+        if UpdateKeys.ARTIST in update:
+            file[2].setArtist(update[UpdateKeys.ARTIST])
+        if UpdateKeys.COMPILATION in update:
+            file[2].setCompilation(update[UpdateKeys.COMPILATION])
+        # Save tags to file
         file[2].save(dest)
 
 DISALLOWED = re.compile('[\\\\/:?*]')
@@ -47,49 +75,98 @@ def target_artist(album):
     # maybe fix atist from directory?
     raise Exception("Can't identify artist for " + album.files()[0][0])
 
-def target_name(tags, add_artist):
-    path = []
-    track = tags.trackNumber()
-    if track:
-        if len(track)==1:
-            track = '0' + track
-        path.append(track)
-    track = tags.trackName()
-    if not track:
-        raise Exception("No track name")
-    path.append(track)
-    # Add optional artist for compilations
-    if add_artist:
-        path.append(tags.trackArtist())        
-    return '-'.join(path) + tags.type()
+#def fiio_destination(destination, updates):
+#    first_track = updates[0]
+#    return os.path.join(destination, first_track[UpdateKeys.ARTIST_DIR], first_track[UpdateKeys.ALBUM_DIR])
 
-def target_album(album):
-    album_name = album.all_off(lambda x: x.albumName())
-    if album_name:
-        path = []
-        year = album.all_off(lambda x: x.year())
-        if year:
-            path.append(year)
-        path.append(album_name)
-        discs = album.all_off(lambda x: x.totalDiscs())
-        disc = album.all_off(lambda x: x.discNumber())
-        if discs and discs > 1 or disc and disc > 1:
-            path.append('[Disc ' + disc + ']')
-        if album.all_off(lambda x: x.live()):
-            path.append('Live')
-        return '-'.join(path)
-    raise Exception("Can't identify album for " + album.files()[0][0])
-
-def enrich_tags(album):
+# Validate tags and return list of dicts with all new things
+def validate_tags(album):
     try:
-        artist = target_artist(album)
-        album_name = target_album(album)
+        # All soundtracks are the same?
+        soundtrack = album.all_off(lambda x: x.soundtrack())
+        if soundtrack is None:
+            print "Soundtrack values are inconsistent. Ignoring %s" % (album.path())
+            return None
+        # All compilations are the same?
+        compilation = album.all_off(lambda x: x.compilation())
+        if compilation is None:
+            print "Compilation values are inconsistent. Ignoring %s" % (album.path())
+            return None
+        # All album artists are the same?
+        albumArtist = album.all_off(lambda x: x.albumArtist())
+        if albumArtist is None and not soundtrack and not compilation:
+            print "Album artist values are inconsistent and not soundtrack/compilation. Ignoring %s" % (album.path())
+            return None
+        # Different track artists?
+        track_artists = album.all_values2(lambda x: x.trackArtist())
+        atristInTracks = len(track_artists) > 1
+        # All album titles are the same?
+        albumTitle = album.all_off(lambda x: x.albumName())
+        if albumTitle is None:
+            print "Album title values are inconsistent. Ignoring %s" % (album.path())
+            return None
+        # Check all tracks numbers set
+        tracks = album.all_values2(lambda x: x.trackNumber())
+        if None in tracks:
+            print "Not all tracks has track number. Ignoring %s" % (album.path())
+            return None
+        # Track numbers to reflect double albums
+        totalDiscs = album.all_off2(lambda x: x.totalDiscs())
+        totalDiscs.extend(album.all_off2(lambda x: x.discNumber()))
+        totalDiscs.sort()
+        usePrefix = totalDiscs[-1] > 1
+        # Release year
+        releaseDates = album.all_values2(lambda x: x.year())
+        if len(releaseDates) > 1:
+            if not soundtrack and not compilation:
+                print "Release date values are inconsistent and not soundtrack/compilation. Ignoring %s" % (album.path())
+                return None
+            releaseDate = None
+        else:
+            releaseDate = releaseDates[0]
+
+        # Form locations:
+        updates = {}
+        # Setup Artist Dir:
+        if soundtrack:
+            updates[UpdateKeys.ARTIST_DIR] = "Soundtracks"
+            updates[UpdateKeys.ARTIST] = "Soundtracks"
+            artist = "Soundtracks"
+        elif compilation:
+            updates[UpdateKeys.ARTIST_DIR] = "Compilations"
+            updates[UpdateKeys.ARTIST] = "Compilations"
+            artist = "Compilations"
+        else:
+            updates[UpdateKeys.ARTIST_DIR] = escape(albumArtist)
+            artist = albumArtist
+        # Setup Album Dir:
+        album_dir = []
+        if releaseDate:
+            album_dir.append(releaseDate)
+        album_dir.append(albumTitle)
+        if albumArtist and (soundtrack or compilation):
+            album_dir.append(albumArtist)
+        updates[UpdateKeys.ALBUM_DIR] = '-'.join(map(escape, album_dir))
+        updates[UpdateKeys.ALBUM_TITLE] = '-'.join(album_dir)
+        # Build files       
+        track_updates = []
         for file in album.files():
-            title = target_name(file[2], False)
-            file[1] = escape(title)
-            file[2].setArtist(artist)
-            file[2].setTitle(album_name)
-        return True
+            tupdates = dict(updates)
+            if compilation or soundtrack:
+                tupdates[UpdateKeys.COMPILATION] = True
+            if usePrefix:
+                tracknum = file.discNumber() * 100 + file.trackNumber()
+                tupdates[UpdateKeys.TRACKNUM] = str(tracknum)
+            else:
+                tracknum = file.trackNumber()
+            if (compilation or soundtrack) and atristInTracks:
+                title = file.trackName() + "-" + file.trackArtist()
+                tupdates[UpdateKeys.TRACK_TITLE] = title
+            else:
+                title = file.trackName()
+            tupdates[UpdateKeys.FILE_NAME] = str(tracknum) + "-" + escape(title)
+            updates.append(tupdates)
+        return updates
     except Exception as e:
         print "Ignoring album : " + e.message
         return False
