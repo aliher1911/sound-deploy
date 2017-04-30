@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+from data import Query
 
 class UpdateKeys:
     ARTIST_DIR = 'artist_dir'
@@ -170,3 +171,131 @@ def validate_tags(album):
     except Exception as e:
         print "Ignoring album : " + e.message
         return False
+
+def updateArtist(album, file):
+    artist = album.all_same('trackArtist')
+    album_artist = album.all_same('albumArtist')
+    compilation = album.all_same('compilation')
+    soundtrack = album.all_same('soundtrack')
+
+    # if compilation
+    if compilation == True:
+        # if soundtrack set artist to soundtrack
+        if soundtrack:
+            file.newArtist = "Soundtrack"
+        # if album artist is set on all tracks, set album artist as artist, don't go special
+        elif album_artist != Query.MULTIPLE or artist :
+            file.newArtist = album_artist
+        # else set artist to compilation
+        else:  
+            file.newArtist = "Compilation"
+    else:
+        # else if artist not same, set artist to album artist
+        if artist == Query.MULTIPLE:
+            file.newArtist = album_artist
+        else:
+            file.newArtist = artist
+    return True
+
+def updateAlbum(album, file):
+    artist = album.all_same('trackArtist')
+    album_artist = album.all_same('albumArtist')
+    soundtrack = album.all_same('soundtrack')
+    year = album.all_same('year')
+    total_discs = album.all_same('totalDiscs')
+    disc = album.all_same('discNumber')
+    live = album.all_same('live')
+    bonus = album.all_same('bonus')
+
+    # if soundtrack and album artist is set, set album to artist - album
+    if soundtrack == True:
+        if artist != Query.MULTIPLE:
+            file.newAlbum = file.albumName() + '/' + artist
+        elif album_artist != Query.MULTIPLE:
+            file.newAlbum = file.albumName() + '/' + album_artist
+        else:
+            file.newAlbum = file.albumName()
+    else:
+        file.newAlbum = file.albumName()
+
+    # if date is set on all tracks, add year prefix to album
+    if year != Query.MULTIPLE:
+        file.newAlbum = year + "-" + file.newAlbum
+
+    # optional disknum, live, bonus
+    if total_discs != Query.MULTIPLE and total_discs != None and total_discs != '1':
+        file.newAlbum = file.newAlbum + " [Disc " + disc + "]"
+    if bonus:
+        file.newAlbum = file.newAlbum + " [Bonus]"
+    if live:
+        file.newAlbum = file.newAlbum + " [Live]"
+
+    return True
+
+def updateTitle(album, file):
+    artist = album.all_same('trackArtist')
+    album_artist = album.all_same('albumArtist')
+    current_artist = file.trackArtist()
+    # if album artist is different from artist or track artist is different, set title to title/track artist
+    if current_artist != file.newArtist or artist == Query.MULTIPLE:
+        file.newTrackName = file.trackName() + "/" + current_artist
+    else:
+        file.newTrackName = file.trackName()
+    return True
+
+def updateTrackNum(album, file):
+    # if total cd > 1, add 100 * cdnum to track num
+    total_discs = album.all_same('totalDiscs')
+    if total_discs != Query.MULTIPLE and total_discs != '1' and total_discs is not None:
+        file.newTrackNumber = str(int(file.discNumber()) * 100 + int(file.trackNumber()))
+    else:
+        file.newTrackNumber = file.trackNumber()
+    return True
+
+# This should update both album base and files
+def setPath(album, file, destination):
+    # new artist + new album / new track names
+    file.newFilename = escape(file.newTrackNumber + '-' + file.newTrackName)
+    album.newPath = os.path.join(destination, escape(file.newArtist), escape(file.newAlbum))
+    return True
+
+class Deployer:
+    def __init__(self, naming, destination):
+        self._naming = naming
+        self._destination = destination
+
+    # need to: set artist, album, track, tracknum
+    # updates is a list of files
+    def prepare(self, album):
+        album.updates = []
+        for record in album.files():
+            file = record[2]
+            # those bits should come from naming
+            if not updateArtist(album, file): return False
+            if not updateAlbum(album, file): return False
+            if not updateTitle(album, file): return False
+            if not updateTrackNum(album, file): return False
+            if not setPath(album, file, self._destination): return False
+        return True
+
+    def process(self, album):
+        print "Moving album to %s" % album.newPath
+        if not os.path.isdir(album.newPath):
+            os.makedirs(album.newPath)
+        for record in album.files():
+            file = record[2]
+            dest = os.path.join(album.newPath, file.newFilename + file.type())
+            shutil.copy(record[0], dest)
+            file.apply_tags(dest)
+
+        # print "======================================"
+        # print album.newPath
+        # print "======================================"
+        # for file in album.files():
+        #     print "Filename  : " + file[2].newFilename
+        #     print "Artist    : " + file[2].newArtist
+        #     print "Album     : " + file[2].newAlbum
+        #     print "Tracknum  : " + file[2].newTrackNumber
+        #     print "Trackname : " + file[2].newTrackName
+        #     print "======================================"
+        return True

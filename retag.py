@@ -134,3 +134,13 @@ def fix_function(values, interactive):
                 track[2].save(track[0])
         return True
     return fix_directory
+
+class Tagger:
+    def __init__(self, defaults):
+        self._defaults = defaults
+
+    def prepare(self, album):
+        return True
+
+    def process(self, album):
+        return True

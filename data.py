@@ -55,12 +55,13 @@ class Mp3Tags:
         return self._tag('TCMP')
 
     def live(self):
-        comm = self._tag('COMM')
-        return comm and comm.lower().find('live') != -1
+        return self._comm_tag('live')
+
+    def bonus(self):
+        return self._comm_tag('bonus')
 
     def soundtrack(self):
-        comm = self._tag('COMM')
-        return comm and comm.lower().find('soundtrack') != -1
+        return self._comm_tag('soundtrack')
 
     def type(self):
         return ".mp3"
@@ -68,6 +69,11 @@ class Mp3Tags:
     def _tag(self, name):
         return self.tags[name][0] if name in self.tags else None
 
+    def _comm_tag(self, name):
+        comm = self._tag('COMM')
+        return comm and comm.lower().find(name) != -1        
+
+    # legacy
     # updating fields
 
     # Overwrite to make compilations, soundtracks etc
@@ -94,6 +100,17 @@ class Mp3Tags:
         if self._albumTitle:
             new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self._albumTitle)
         new_tags.save(filename)
+
+    # maybe pass updates instead of hacking the file?
+    def apply_tags(self, filename):
+        new_tags = mutagen.mp3.MP3(filename)
+        new_tags['TPE1'] = mutagen.id3.TPE1(encoding=3, text=self.newArtist)
+        new_tags['TIT2'] = mutagen.id3.TIT2(encoding=3, text=self.newTrackName)
+        new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self.newAlbum)
+        # we are overwriting total tracks with empty
+        new_tags['TRCK'] = mutagen.id3.TRCK(encoding=3, text=self.newTrackNumber)
+        new_tags.save(filename)
+
 
 class FlacTags:
     def __init__(self, filename):
@@ -132,12 +149,13 @@ class FlacTags:
         return self._tag('compilation')
 
     def live(self):
-        comm = self._tag('comment')
-        return comm and comm.lower().find('live') != -1
+        return self._comm_tag('live')
+
+    def bonus(self):
+        return self._comm_tag('bonus')
 
     def soundtrack(self):
-        comm = self._tag('comment')
-        return comm and comm.lower().find('soundtrack') != -1
+        return self._comm_tag('soundtrack')
 
     def type(self):
         return ".flac"
@@ -145,6 +163,11 @@ class FlacTags:
     def _tag(self, name):
         return self.tags[name][0] if name in self.tags else None
 
+    def _comm_tag(self, name):
+        comm = self._tag('comment')
+        return comm and comm.lower().find(name) != -1
+
+    # legacy
     # updating fields
 
     # Overwrite to make compilations, soundtracks etc
@@ -172,6 +195,15 @@ class FlacTags:
             new_tags['album'] = self._albumTitle
         new_tags.save(filename)
 
+    # maybe pass updates instead of hacking the file?
+    def apply_tags(self, filename):
+        new_tags = mutagen.mp3.MP3(filename)
+        new_tags['artist'] = self.newArtist
+        new_tags['title'] = self.newTrackName
+        new_tags['title'] = self.newAlbum
+        new_tags['tracknumber'] = self.newTrackNumber
+        new_tags.save(filename)
+
 # Aggregation result
 class Aggregate:
     # values as collected from files, unique
@@ -197,6 +229,9 @@ class Aggregate:
     def nonEmpty(self):
         return filter(lambda x: x, self._values)
 
+class Query:
+    MULTIPLE = object()
+
 class Album:
     def __init__(self, path):
         # contains orig_filename, new_filename, tags object
@@ -209,17 +244,18 @@ class Album:
     def empty(self):
         return len(self._files) == 0
 
-    def all_off(self, read):
-        vals = self.all_values2(read)
-        return None if len(vals)!=1 else vals[0]
+    def all_same(self, attribute):
+        vals = self.query(attribute)
+        return vals[0] if len(vals) == 1 else Query.MULTIPLE
 
-    # All values including Nulls
-    def all_values2(self, read):
-        return list(set(map(lambda x: read(x[2]), self._files)))
+
+    def all_off(self, read):
+        vals = self.query(read)
+        return None if len(vals)!=1 else vals[0]
 
     # All values excluding Nulls
     def all_values(self, read):
-        return filter(lambda x: x, self.all_values2(read))
+        return filter(lambda x: x, self.query(read))
 
     def all_values(self, read):
         return filter(lambda x: x, set(map(lambda x: read(x[2]), self._files)))
@@ -237,6 +273,11 @@ class Album:
     #     except Exception as e:
     #         print "Ignoring album : " + e.message
     #         return False
+
+    # All unique values including Nulls, utility fn
+    def query(self, read):
+        func = (lambda x: getattr(x[2], read)()) if isinstance(read, str) else (lambda x: read(x[2]))
+        return list(set(map(func, self._files)))
 
     def files(self):
         return self._files

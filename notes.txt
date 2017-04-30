@@ -1,0 +1,28 @@
+Pseudo artist - Compilation, Artist after track title
+Pseudo albums - <Year>-Title-<disc>-<live>
+
+Verify:
+src file -> verifications: check, ask for changes -> updates list -> apply updates
+
+Deploy:
+src file -> tag mapping -> update list -> destination (based on originals?) -> copy -> apply updates
+
+sorce/dest file name, directory - attributes of file, not update list
+
+1) deployer
+2) fixer
+
+arch:
+main.py - parse args and main loop - iterate albums
+
+deploy.py - copy files to destination
+  fiio.py - prepare transformation for player destination
+  server.py - prepare destination for server
+
+retag.py - fixer. interactive or non-interactive updates. on hold
+
+workflow:
+  iterate albums with files ignoring history (for rerunability)
+
+Processor could do anything!
+Analyze then update
