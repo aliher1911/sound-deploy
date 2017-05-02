@@ -3,7 +3,33 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
 import mutagen.flac
 
-class Mp3Tags:
+class UpdatableTag:
+    def setArtist(self, artist):
+        self._newArtist = artist
+
+    def getNewArtist(self):
+        return self._newArtist if hasattr(self, '_newArtist') else self.albumArtist()
+
+    def setAlbum(self, album):
+        self._newAlbum = album
+
+    def getNewAlbum(self):
+        return self._newAlbum if hasattr(self, '_newAlbum') else self.albumName()
+
+    def setTrackName(self, trackName):
+        self._newTrackName = trackName
+
+    def getNewTrackName(self):
+        return self._newTrackName if hasattr(self, '_newTrackName') else self.trackName()
+
+    def setTrackNumber(self, trackNum):
+        self._newTrackNumber = trackNum
+
+    def getNewTrackNumber(self):
+        return self._newTrackNumber if hasattr(self, '_newTrackNumber') else self.trackNumber()
+
+
+class Mp3Tags(UpdatableTag):
     def __init__(self, filename):
         self.tags = mutagen.mp3.MP3(filename)
         self._artist = None
@@ -69,50 +95,35 @@ class Mp3Tags:
     def _tag(self, name):
         return self.tags[name][0] if name in self.tags else None
 
-    def _comm_tag(self, name):
-        comm = self._tag('COMM')
-        return comm and comm.lower().find(name) != -1        
-
-    # legacy
-    # updating fields
-
-    # Overwrite to make compilations, soundtracks etc
-    def setArtist(self, artist):
-        self._artist = artist
-
-    # Overwrite to make compilations, soundtracks etc
-    def setTrackName(self, trackName):
-        self._trackName = trackName
-
-    # Title to include artist for compilations etc
-    def setTitle(self, albumTitle):
-        self._albumTitle = albumTitle
-
-    def save(self, filename):
-        if not self._artist and not self._trackName and not self._albumTitle:
-            print "Tags unchanged for " + filename
-            return
-        new_tags = mutagen.mp3.MP3(filename)
-        if self._artist:
-            new_tags['TPE1'] = mutagen.id3.TPE1(encoding=3, text=self._artist)
-        if self._trackName:
-            new_tags['TIT2'] = mutagen.id3.TIT2(encoding=3, text=self._trackName)
-        if self._albumTitle:
-            new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self._albumTitle)
-        new_tags.save(filename)
+    def _comm_tag(self, token):
+        for name in self.tags.keys():
+            if name.startswith('COMM'):
+                if self.tags[name][0].lower().find(token) != -1:
+                    return True
+        return False
 
     # maybe pass updates instead of hacking the file?
     def apply_tags(self, filename):
         new_tags = mutagen.mp3.MP3(filename)
-        new_tags['TPE1'] = mutagen.id3.TPE1(encoding=3, text=self.newArtist)
-        new_tags['TIT2'] = mutagen.id3.TIT2(encoding=3, text=self.newTrackName)
-        new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self.newAlbum)
+        updated = False
+        if hasattr(self, '_newArtist'):
+            new_tags['TPE1'] = mutagen.id3.TPE1(encoding=3, text=self._newArtist)
+            updated = True
+        if hasattr(self, '_newTrackName'):
+            new_tags['TIT2'] = mutagen.id3.TIT2(encoding=3, text=self._newTrackName)
+            updated = True
+        if hasattr(self, '_newAlbum'):
+            new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self._newAlbum)
+            updated = True
         # we are overwriting total tracks with empty
-        new_tags['TRCK'] = mutagen.id3.TRCK(encoding=3, text=self.newTrackNumber)
-        new_tags.save(filename)
+        if hasattr(self, '_newTrackNumber'):
+            new_tags['TRCK'] = mutagen.id3.TRCK(encoding=3, text=self._newTrackNumber)
+            updated = True
+        if updated:
+            new_tags.save(filename)
 
 
-class FlacTags:
+class FlacTags(UpdatableTag):
     def __init__(self, filename):
         self.tags = mutagen.flac.FLAC(filename)
         self._artist = None
@@ -167,42 +178,20 @@ class FlacTags:
         comm = self._tag('comment')
         return comm and comm.lower().find(name) != -1
 
-    # legacy
-    # updating fields
-
-    # Overwrite to make compilations, soundtracks etc
-    def setArtist(self, artist):
-        self._artist = artist
-
-    # Overwrite to make compilations, soundtracks etc
-    def setTrackName(self, trackName):
-        self._trackName = trackName
-
-    # Title to include artist for compilations etc
-    def setTitle(self, albumTitle):
-        self._albumTitle = albumTitle
-
-    def save(self, filename):
-        if not self._artist and not self._trackName and not self._albumTitle:
-            print "Tags unchanged for " + filename
-            return
-        new_tags = mutagen.flac.FLAC(filename)
-        if self._artist:
-            new_tags['artist'] = self._artist
-        if self._trackName:
-            new_tags['title'] = self._trackName
-        if self._albumTitle:
-            new_tags['album'] = self._albumTitle
-        new_tags.save(filename)
-
     # maybe pass updates instead of hacking the file?
     def apply_tags(self, filename):
-        new_tags = mutagen.mp3.MP3(filename)
-        new_tags['artist'] = self.newArtist
-        new_tags['title'] = self.newTrackName
-        new_tags['title'] = self.newAlbum
-        new_tags['tracknumber'] = self.newTrackNumber
-        new_tags.save(filename)
+        new_tags = mutagen.flac.FLAC(filename)
+        updated = False
+        if hasattr(self, '_newArtist'):
+            new_tags['artist'] = self._newArtist
+        if hasattr(self, '_newTrackName'):
+            new_tags['title'] = self._newTrackName
+        if hasattr(self, '_newAlbum'):
+            new_tags['album'] = self._newAlbum
+        if hasattr(self, '_newTrackNumber'):
+            new_tags['tracknumber'] = self._newTrackNumber
+        if updated:
+            new_tags.save(filename)
 
 # Aggregation result
 class Aggregate:
@@ -259,20 +248,6 @@ class Album:
 
     def all_values(self, read):
         return filter(lambda x: x, set(map(lambda x: read(x[2]), self._files)))
-
-    # def analyze_tags(self):
-    #     try:
-    #         self._artist = self._target_artist()
-    #         self._album = self._target_album()
-    #         for file in self._files:
-    #             title = self._target_name(file[2])
-    #             file[1] = escape(title)
-    #             file[2].setArtist(self._artist)
-    #             file[2].setTitle(self._album)
-    #         return True
-    #     except Exception as e:
-    #         print "Ignoring album : " + e.message
-    #         return False
 
     # All unique values including Nulls, utility fn
     def query(self, read):

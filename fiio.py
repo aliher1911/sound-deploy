@@ -1,70 +1,107 @@
-import os
 import re
-import shutil
+import os
+from data import Query
 
-def move_function(destination):
-    def move_valid(album):
-        print "Moving %s" % (album.path())
-        updates = validate_tags(album)
-        if updates:
-            move_album(album, destination, updates)
-            return True
-        return False
-    return move_valid
-
-def move_album(album, destination, updates):
-    dst = fiio_destination(destination, album, updates)
-    print "Moving album to %s" % dst
-    if not os.path.isdir(dst):
-        os.makedirs(dst)
-    all_files = album.files()
-    for i in range(len(all_files)):
-        file = all_files[i]
-        update = updates[i]
-        dest = os.path.join(dst, update[UpdateKeys.FILE_NAME])
-        shutil.copy(file[0], dest)
-        # Set tags
-        if UpdateKeys.ALBUM_TITLE in update:
-            file[2].setTitle(update[UpdateKeys.ALBUM_TITLE])
-        if UpdateKeys.TRACK_TITLE in update:
-            file[2].setTrackName(update[UpdateKeys.TRACK_TITLE])
-        if UpdateKeys.TRACKNUM in update:
-            file[2].setTrackNum(update[UpdateKeys.TRACKNUM])
-        if UpdateKeys.ARTIST in update:
-            file[2].setArtist(update[UpdateKeys.ARTIST])
-        if UpdateKeys.COMPILATION in update:
-            file[2].setCompilation(update[UpdateKeys.COMPILATION])
-        # Save tags to file
-        file[2].save(dest)
-
+BLACKLIST = ["Various Artists", "Original Soundtrack", None, "", Query.MULTIPLE]
 DISALLOWED = re.compile('[\\\\/:?*]')
 
 def escape(filename):
+    print u"Escaping '{}'".format(filename)
     return DISALLOWED.sub('_', filename)
 
-def fiio_destination(destination, album):
-    artist = escape(target_artist(album))
-    album = escape(target_album(album))
-    return os.path.join(destination, artist, album)
-
-def fiio_filename(album, file):
-    pass
-
-def target_artist(album):
-    if album.all_off(lambda x: x.compilation()):
-        return 'Compilations'
-    if album.all_off(lambda x: x.soundtrack()):
-        return 'Soundtracks'
-    artist = album.all_off(lambda x: x.trackArtist())
-    if artist:
-        return artist
-    artist = album.all_off(lambda x: x.albumArtist())
-    if artist:
-        return artist
-    # maybe fix atist from directory?
-    raise Exception("Can't identify artist for " + album.files()[0][0])
-
 class FiioNaming:
-    def __init__(self):
-        pass
+    def updateArtist(self, album, file):
+        artist = album.all_same('trackArtist')
+        album_artist = album.all_same('albumArtist')
+        compilation = album.all_same('compilation')
+        soundtrack = album.all_same('soundtrack')
+        print 'Soundtrack {}'.format(soundtrack)
 
+        # if compilation
+        print "Compilation '{}'".format(compilation)
+        if compilation != None or artist == Query.MULTIPLE or album_artist == Query.MULTIPLE:
+            print "Detected compilation"
+            # if soundtrack set artist to soundtrack
+            if soundtrack:
+                print "Soundtrack goes to separate location"
+                file.setArtist("Soundtrack")
+            # if album artist is set on all tracks, set album artist as artist, don't go special
+            elif not album_artist in BLACKLIST:
+                print "Album artist is same or track artist is set {}/{}".format(album_artist, artist)
+                file.setArtist(album_artist)
+            # else set artist to compilation
+            else:  
+                print "Plain compilation goes to separate location"
+                file.setArtist("Compilation")
+        else:
+            print "Detected Artist disc"
+            # else if artist not same, set artist to album artist
+            if artist == Query.MULTIPLE:
+                file.setArtist(album_artist)
+            else:
+                file.setArtist(artist)
+        return True
+
+    def updateAlbum(self, album, file):
+        artist = album.all_same('trackArtist')
+        album_artist = album.all_same('albumArtist')
+        soundtrack = album.all_same('soundtrack')
+        year = album.all_same('year')
+        total_discs = album.all_same('totalDiscs')
+        disc = album.all_same('discNumber')
+        live = album.all_same('live')
+        bonus = album.all_same('bonus')
+
+        # if soundtrack and album artist is set, set album to artist - album
+        if soundtrack == True:
+            if artist != Query.MULTIPLE:
+                newAlbum = file.albumName() + '/' + artist
+            elif not album_artist in BLACKLIST:
+                newAlbum = file.albumName() + '/' + album_artist
+            else:
+                newAlbum = file.albumName()
+        else:
+            newAlbum = file.albumName()
+
+        # if date is set on all tracks, add year prefix to album
+        if year != Query.MULTIPLE:
+            newAlbum = year + "-" + newAlbum
+
+        # optional disknum, live, bonus
+        if total_discs != Query.MULTIPLE and total_discs != None and total_discs != '1':
+            newAlbum = newAlbum + " [Disc " + disc + "]"
+        if bonus:
+            newAlbum = newAlbum + " [Bonus]"
+        if live:
+            newAlbum = newAlbum + " [Live]"
+
+        # set on file object
+        file.setAlbum(newAlbum)
+        return True
+
+    def updateTitle(self, album, file):
+        artist = album.all_same('trackArtist')
+        album_artist = album.all_same('albumArtist')
+        current_artist = file.trackArtist()
+        # if album artist is different from artist or track artist is different, set title to title/track artist
+        if current_artist != album_artist or artist == Query.MULTIPLE:
+            file.setTrackName(file.trackName() + "/" + current_artist)
+        else:
+            file.setTrackName(file.trackName())
+        return True
+
+    def updateTrackNum(self, album, file):
+        # if total cd > 1, add 100 * cdnum to track num
+        total_discs = album.all_same('totalDiscs')
+        if total_discs != Query.MULTIPLE and total_discs != '1' and total_discs is not None:
+            file.setTrackNumber(str(int(file.discNumber()) * 100 + int(file.trackNumber())))
+        else:
+            file.setTrackNumber(file.trackNumber())
+        return True
+
+    # This should update both album base and files
+    def setPath(self, album, file, destination):
+        # new artist + new album / new track names
+        file.newFilename = escape(file.getNewTrackNumber() + '-' + file.getNewTrackName())
+        album.newPath = os.path.join(destination, escape(file.getNewArtist()), escape(file.getNewAlbum()))
+        return True
