@@ -5,7 +5,8 @@ from data import *
 from deploy import *
 from retag import *
 from history import *
-from fiio import *
+from fiio import FiioNaming
+from archive import ArchiveNaming
 
 def read_info(filename):
     """
@@ -113,8 +114,12 @@ def main():
     history = History() if args.history else NoHistory()
     source = recursive(args.src[0]) if args.recursive else single(args.src[0])
 
-#    processor = move_function(args.dst) if args.a == 'deploy' else fix_function(pre_defined, True)
-    processor = Deployer(FiioNaming(), args.dst) if args.a == 'deploy' else Tagger(pre_defined)
+    if args.a == 'deploy':
+        naming = FiioNaming() if args.d == 'fiio' else ArchiveNaming()
+        processor = Deployer(naming, args.dst) if args.a == 'deploy' else Tagger(pre_defined)
+    else:
+        # This will fail
+        processor = fix_function(pre_defined, True)
 
     process_albums(processor, directory_scanner(source, history), history)
 
