@@ -24,7 +24,7 @@ class FiioNaming:
             # if soundtrack set artist to soundtrack
             if soundtrack:
                 print "Soundtrack goes to separate location"
-                file.setArtist("Soundtrack")
+                file.setArtist("Soundtracks")
             # if album artist is set on all tracks, set album artist as artist, don't go special
             elif not album_artist in BLACKLIST:
                 print "Album artist is same or track artist is set {}/{}".format(album_artist, artist)
@@ -32,7 +32,7 @@ class FiioNaming:
             # else set artist to compilation
             else:  
                 print "Plain compilation goes to separate location"
-                file.setArtist("Compilation")
+                file.setArtist("Compilations")
         else:
             print "Detected Artist disc"
             # else if artist not same, set artist to album artist

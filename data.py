@@ -124,6 +124,13 @@ class Mp3Tags(UpdatableTag):
 
 
 class FlacTags(UpdatableTag):
+    NEW_TAG_MAP = {
+        '_newArtist': 'artist',
+        '_newTrackName': 'title',
+        '_newAlbum': 'album',
+        '_newTrackNumber': 'tracknumber'
+    }
+
     def __init__(self, filename):
         self.tags = mutagen.flac.FLAC(filename)
         self._artist = None
@@ -182,14 +189,10 @@ class FlacTags(UpdatableTag):
     def apply_tags(self, filename):
         new_tags = mutagen.flac.FLAC(filename)
         updated = False
-        if hasattr(self, '_newArtist'):
-            new_tags['artist'] = self._newArtist
-        if hasattr(self, '_newTrackName'):
-            new_tags['title'] = self._newTrackName
-        if hasattr(self, '_newAlbum'):
-            new_tags['album'] = self._newAlbum
-        if hasattr(self, '_newTrackNumber'):
-            new_tags['tracknumber'] = self._newTrackNumber
+        for k,v in FlacTags.NEW_TAG_MAP.iteritems():
+            if hasattr(self, k):
+               new_tags[v] = getattr(self, k)
+               updated = True
         if updated:
             new_tags.save(filename)
 
