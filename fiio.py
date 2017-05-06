@@ -96,7 +96,7 @@ class FiioNaming:
         if total_discs != Query.MULTIPLE and total_discs != '1' and total_discs is not None:
             file.setTrackNumber("{:02}".format(int(file.discNumber()) * 100 + int(file.trackNumber())))
         else:
-            file.setTrackNumber(file.trackNumber())
+            file.setTrackNumber("{:02}".format(int(file.trackNumber())))
         return True
 
     # This should update both album base and files
