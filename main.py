@@ -22,6 +22,9 @@ def read_info(filename):
         return None
 
 def scan_directory(path, files):
+    """
+    Yield album from path
+    """
     print "Processing directory %s" % path
     album = Album(path)
     for name in files:
@@ -29,7 +32,8 @@ def scan_directory(path, files):
         infos = read_info(src)
         if infos:
             album.add(src, infos)
-    return None if album.empty() else album
+    if not album.empty():
+        yield album
 
 def recursive(root):
     """
@@ -54,7 +58,7 @@ def single(root):
         yield (root, [], files)
     return iterate
 
-def directory_scanner(source, history):
+def directory_scanner(source, history, dir_reader):
     """
     Iterate parsed albums from the source
     returns album iterator
@@ -65,11 +69,8 @@ def directory_scanner(source, history):
             if history.has(path):
                 continue
             print "Attempting to scan " + path
-            tags = scan_directory(path, names)
-            if not tags:
-                print "No tracks, skipping " + path
-                continue
-            yield tags
+            for tags in dir_reader(path, names):
+                yield tags
     return generate
 
 def process_albums(processor, scanner, history):
@@ -121,7 +122,7 @@ def main():
         # This will fail
         processor = fix_function(pre_defined, True)
 
-    process_albums(processor, directory_scanner(source, history), history)
+    process_albums(processor, directory_scanner(source, history, scan_directory), history)
 
 if __name__ == '__main__':
     main()

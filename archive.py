@@ -64,7 +64,11 @@ class ArchiveNaming:
             album_path += " [Bonus]"
 
         # new artist + new album / new track names
-        file.newFilename = escape(file.getNewTrackNumber() + '-' + file.getNewTrackName())
+        try:
+            trackNum = "{:02}".format(int(file.getNewTrackNumber()))
+        except:
+            trackNum = file.getNewTrackNumber()
+        file.newFilename = escape(trackNum + '-' + file.getNewTrackName())
 
         # need to build proper path
         album.newPath = os.path.join(destination, escape(atrist_path), escape(album_path))

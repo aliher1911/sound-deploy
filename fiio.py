@@ -94,7 +94,7 @@ class FiioNaming:
         # if total cd > 1, add 100 * cdnum to track num
         total_discs = album.all_same('totalDiscs')
         if total_discs != Query.MULTIPLE and total_discs != '1' and total_discs is not None:
-            file.setTrackNumber(str(int(file.discNumber()) * 100 + int(file.trackNumber())))
+            file.setTrackNumber("{:02}".format(int(file.discNumber()) * 100 + int(file.trackNumber())))
         else:
             file.setTrackNumber(file.trackNumber())
         return True

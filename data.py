@@ -240,7 +240,6 @@ class Album:
         vals = self.query(attribute)
         return vals[0] if len(vals) == 1 else Query.MULTIPLE
 
-
     def all_off(self, read):
         vals = self.query(read)
         return None if len(vals)!=1 else vals[0]
@@ -262,3 +261,4 @@ class Album:
 
     def path(self):
         return self._path
+
