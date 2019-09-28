@@ -1,4 +1,5 @@
 import os
+import re
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
 import mutagen.flac
@@ -122,6 +123,7 @@ class Mp3Tags(UpdatableTag):
         if updated:
             new_tags.save(filename)
 
+YEAR_EXTRACT = re.compile(".*(\\d{4}).*")
 
 class FlacTags(UpdatableTag):
     NEW_TAG_MAP = {
@@ -151,7 +153,9 @@ class FlacTags(UpdatableTag):
         return self._tag('album')
 
     def year(self):
-        return self._tag('date')
+        date = self._tag('date')
+        m = YEAR_EXTRACT.match(date)
+        return m.group(1) if m else date
 
     def trackNumber(self):
         return self._tag('tracknumber')
@@ -183,7 +187,8 @@ class FlacTags(UpdatableTag):
 
     def _comm_tag(self, name):
         comm = self._tag('comment')
-        return comm and comm.lower().find(name) != -1
+        desc = self._tag('description')
+        return comm and comm.lower().find(name) != -1 or desc and desc.lower().find(name) != -1
 
     # maybe pass updates instead of hacking the file?
     def apply_tags(self, filename):

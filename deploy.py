@@ -94,6 +94,10 @@ import shutil
 #         print "Ignoring album : " + e.message
 #         return False
 
+def trim(filename, extension):
+    max_len = 255 - len(extension)
+    return filename if len(filename) < max_len else filename[0:max_len]
+
 class Deployer:
     def __init__(self, naming, destination):
         self._naming = naming
@@ -119,7 +123,7 @@ class Deployer:
             os.makedirs(album.newPath)
         for record in album.files():
             file = record[2]
-            dest = os.path.join(album.newPath, file.newFilename + file.type())
+            dest = os.path.join(album.newPath, trim(file.newFilename, file.type()) + file.type())
             shutil.copy(record[0], dest)
             file.apply_tags(dest)
 

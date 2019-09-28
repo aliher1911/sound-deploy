@@ -83,8 +83,11 @@ class FiioNaming:
         artist = album.all_same('trackArtist')
         album_artist = album.all_same('albumArtist')
         current_artist = file.trackArtist()
+        print u"Atrist {}".format(artist)
+        print u"AAtrist {}".format(album_artist)
+        print u"CAtrist {}".format(current_artist)
         # if album artist is different from artist or track artist is different, set title to title/track artist
-        if current_artist != album_artist or artist == Query.MULTIPLE:
+        if (current_artist and album_artist and current_artist != album_artist) or artist == Query.MULTIPLE:
             file.setTrackName(file.trackName() + "/" + current_artist)
         else:
             file.setTrackName(file.trackName())
@@ -103,5 +106,14 @@ class FiioNaming:
     def setPath(self, album, file, destination):
         # new artist + new album / new track names
         file.newFilename = escape(file.getNewTrackNumber() + '-' + file.getNewTrackName())
-        album.newPath = os.path.join(destination, escape(file.getNewArtist()), escape(file.getNewAlbum()))
+
+        # workaround case where album artist and artist are consistent and different
+        artist = album.all_same('trackArtist')
+        album_artist = album.all_same('albumArtist')
+        if not album_artist in [Query.MULTIPLE, "", None]:
+            artistPath = album_artist
+        else:
+            artistPath = artist
+
+        album.newPath = os.path.join(destination, escape(artistPath), escape(file.getNewAlbum()))
         return True
