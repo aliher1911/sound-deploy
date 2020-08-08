@@ -26,3 +26,8 @@ workflow:
 
 Processor could do anything!
 Analyze then update
+
+Bugs:
+- when only 1 CD and total is 1 don't print total
+- when compilation set to 0 don't put to compilations
+
