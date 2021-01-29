@@ -10,7 +10,7 @@ def trim(filename, extension):
 
 
 class Deployer:
-    def __init__(self, naming, destination):
+    def __init__(self, naming, destination, processor):
         """
         naming - naming scheme to apply to files
         process - function that would transform the file and provide new destination name
@@ -19,6 +19,7 @@ class Deployer:
         self._naming = naming
         #self._process = process
         self._destination = destination
+        self._processor = processor
 
     # need to: set artist, album, track, tracknum
     # updates is a list of files
@@ -41,8 +42,10 @@ class Deployer:
         for record in album.files():
             file = record.tags
             if file_filter is None or file_filter(record):
-                dest = os.path.join(album.newPath,
-                                    trim(record.newFilename, record.tags.type()) + record.tags.type())
-                shutil.copy(record.filename, dest)
+                dest_template = os.path.join(album.newPath,
+                                    trim(record.newFilename, record.tags.type()))
+                dest = self._processor.process_file(record.filename, dest_template)
+                if dest is None:
+                    raise ValueError()
                 apply_tags(record.tags, dest)
         return True

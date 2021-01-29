@@ -7,6 +7,7 @@ from retag import *
 from history import *
 from fiio import FiioNaming
 from archive import ArchiveNaming
+from transform import CopyProcessor, Mp3Processor
 
 
 def read_info(filename):
@@ -109,7 +110,8 @@ def main():
     parser.add_argument('src', nargs=1)
     # deploy files
     parser.add_argument('dst', nargs='?')
-    parser.add_argument('-d', choices=['fiio', 'archive', 'car'], default='fiio')
+    parser.add_argument('-d', choices=['fiio', 'archive'], default='fiio')
+    parser.add_argument('-p', choices=['copy', 'mp3'], default='copy')
     # update files
     parser.add_argument('-i', dest='interactive', action='store_true', help='Intractive e.g. ask user to choose options')
     parser.set_defaults(interactive=False)
@@ -138,7 +140,8 @@ def main():
     if args.a == 'deploy':
         naming = FiioNaming() if args.d == 'fiio' else ArchiveNaming()
         # This is some BS leftovers
-        processor = Deployer(naming, args.dst) if args.a == 'deploy' else Tagger(pre_defined)
+        transform = Mp3Processor() if args.p == 'mp3' else CopyProcessor()
+        processor = Deployer(naming, args.dst, transform) if args.a == 'deploy' else Tagger(pre_defined)
     else:
         # This will fail
         processor = fix_function(pre_defined, True)

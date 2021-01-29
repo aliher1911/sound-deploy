@@ -9,3 +9,5 @@ virtualenv -p python3 --creator venv venv
 pip install -r requirements.txt
 
 Helper script could then be used with desktop intergation to process files
+
+To convert flac to mp3 during deploy you need ffmpeg available in path
