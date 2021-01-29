@@ -1,20 +1,24 @@
 import os
 
+
 class FixResult:
     VALID = 1
     FIXED = 2
     SKIPED = 3
     ABORT = 4
 
+    
 class UserChoice:
     SKIP = -1
     ABORT = -2
 
+    
 class TagSettings:
     ARTIST = 'Artist'
     COMMENT = 'Comment'
     TITLE = 'Title'
 
+    
 # Up 0 is dir itself (e.g. probably album name)
 def get_dir_up(album_path, up):
     full = os.path.abspath(album_path)
@@ -22,15 +26,17 @@ def get_dir_up(album_path, up):
         full, name = os.path.split(full)
     return name
 
+
 def only_value(list):
     return None if len(list)!=1 else list[0]
 
+
 def ask_user(album, field, options):
-    print "Choose %s for %s:" % (field, album.path())
+    print("Choose %s for %s:" % (field, album.path()))
     for i in range(1, len(options) + 1):
-        print "%i) %s" % (i, options[i-1])
-    print "a) Abort"
-    print "s) Skip"
+        print("%i) %s" % (i, options[i-1]))
+    print("a) Abort")
+    print("s) Skip")
     while True:
         choice = raw_input().strip()
         if choice == 'a':
@@ -40,11 +46,12 @@ def ask_user(album, field, options):
         try:
             index = int(choice)
             if index < 1 or index > len(options):
-                print "Invalid input %s" % (choice)
+                print("Invalid input %s" % (choice))
             return index - 1
         except:
-            print "Invalid input %s" % (choice)
+            print("Invalid input %s" % (choice))
 
+            
 def do_fix(album, field, values, interactive, check_validity, guess_options, update):
     if field in values:
         options = [values[field]]
@@ -52,7 +59,7 @@ def do_fix(album, field, values, interactive, check_validity, guess_options, upd
     else:
         if not check_validity(album):
             if not interactive:
-                print "Invalid %s in %s, skipping" % (field, album.path)
+                print("Invalid %s in %s, skipping" % (field, album.path))
                 return FixResult.SKIPED
             options = guess_options(album, field)
             choice = ask_user(album, field, options)
@@ -66,21 +73,25 @@ def do_fix(album, field, values, interactive, check_validity, guess_options, upd
     update(album, field, value)
     return FixResult.FIXED
 
+
 # Fixing album title
 def is_title_valid(album):
     # All tracks have same name and not empty
     vals = album.all_values(lambda x: x.albumName())
     return len(vals) == 1 and vals.pop()
 
+
 def guess_title(album, field):
     options = list(album.all_values(lambda x: x.albumName()))
     options.append(get_dir_up(album.path(), 0))
     return filter(lambda x: x, options)
 
+
 def update_title(album, field, value):
     for track in album.files():
         track[2].setTitle(value)
 
+        
 # Fixing artist/compilation
 #...
 def is_artist_valid(album):
@@ -92,16 +103,19 @@ def is_artist_valid(album):
         return True
     return False
 
+
 def guess_artist(album, field):
     options = list(set(album.all_values(lambda x: x.trackArtist())) \
               .union(album.all_values(lambda x: x.trackArtist())))
     options.append(get_dir_up(album.path(), 1))
     return filter(lambda x: x, options)
 
+
 def update_artist(album, field, value):
     for track in album.files():
         track[2].setArtist(value)
 
+        
 # Fixing track names ?
 #...
 
@@ -130,10 +144,11 @@ def fix_function(values, interactive):
 
         if need_save:
             for track in album.files():
-                print "Updating %s" % (track[0])
+                print("Updating %s" % (track[0]))
                 track[2].save(track[0])
         return True
     return fix_directory
+
 
 class Tagger:
     def __init__(self, defaults):

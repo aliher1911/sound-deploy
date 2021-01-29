@@ -8,6 +8,7 @@ from history import *
 from fiio import FiioNaming
 from archive import ArchiveNaming
 
+
 def read_info(filename):
     """
     Read tags from file
@@ -18,14 +19,15 @@ def read_info(filename):
     elif upcase.endswith('.FLAC'):
         return FlacTags(filename)
     else:
-        print "Unknown file type for " + filename
+        print("Unknown file type for " + filename)
         return None
 
+    
 def scan_directory(path, files):
     """
     Yield album from path
     """
-    print "Processing directory %s" % path
+    print("Processing directory %s" % path)
     album = Album(path)
     for name in files:
         src = os.path.join(path, name)
@@ -35,28 +37,31 @@ def scan_directory(path, files):
     if not album.empty():
         yield album
 
+        
 def recursive(root):
     """
     Iterate file system tree
     returns iterator
     """
-    print "Scanning '" + root + "' recursively"
+    print("Scanning '" + root + "' recursively")
     def iterate():
-        print "Iterating walk"
+        print("Iterating walk")
         return os.walk(root)
     return iterate
+
 
 def single(root):
     """
     Iterate single directory content
     returns iterator
     """
-    print 'Scanning ' + root
+    print("Scanning " + root)
     def iterate():
         files = [name for name in os.listdir(root) 
                       if os.path.isfile(os.path.join(root, name))]
         yield (root, [], files)
     return iterate
+
 
 def directory_scanner(source, history, dir_reader):
     """
@@ -64,32 +69,42 @@ def directory_scanner(source, history, dir_reader):
     returns album iterator
     """
     def generate():
-        print "Scan tree"
+        print("Scan tree")
         for (path, dirs, names) in source():
             if history.has(path):
                 continue
-            print "Attempting to scan " + path
+            print("Attempting to scan " + path)
             for tags in dir_reader(path, names):
                 yield tags
     return generate
 
+
 def process_albums(processor, scanner, history):
     for album in scanner():
         if not processor.prepare(album):
-            print "Failed to prepare " + album.path()
+            print("Failed to prepare " + album.path())
             continue
         if not processor.process(album):
-            print "Failed to process " + album.path()
+            print("Failed to process " + album.path())
             continue
         history.remember(album.path())
 
+        
+def _config_file_name(self, filename_override=None):
+    config_dir = os.path.expanduser(f"~/.config/sound-deploy")
+    os.makedirs(config_dir, exist_ok=True)
+    config_file = os.path.join(config_dir, "config")
+    print(f"Using config file {config_file}")
+    return config_file
+
+        
 def main():
     parser = argparse.ArgumentParser(description='Fiddle with file tags')
     parser.add_argument('-a', choices=['deploy', 'fixup'], default='deploy', help='Action')
     parser.add_argument('src', nargs=1)
     # deploy files
     parser.add_argument('dst', nargs='?')
-    parser.add_argument('-d', choices=['fiio', 'archive'], default='fiio')
+    parser.add_argument('-d', choices=['fiio', 'archive', 'car'], default='fiio')
     # update files
     parser.add_argument('-i', dest='interactive', action='store_true', help='Intractive e.g. ask user to choose options')
     parser.set_defaults(interactive=False)
@@ -124,5 +139,6 @@ def main():
 
     process_albums(processor, directory_scanner(source, history, scan_directory), history)
 
+    
 if __name__ == '__main__':
     main()

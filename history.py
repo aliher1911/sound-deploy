@@ -20,6 +20,7 @@ class History:
     def close(self):
         self.file.close()
 
+        
 class NoHistory:
     def has(self, file):
         return False

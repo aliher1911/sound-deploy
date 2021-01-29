@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 
+
 # # Validate tags and return list of dicts with all new things
 # def validate_tags(album):
 #     try:
@@ -94,9 +95,11 @@ import shutil
 #         print "Ignoring album : " + e.message
 #         return False
 
+
 def trim(filename, extension):
     max_len = 255 - len(extension)
     return filename if len(filename) < max_len else filename[0:max_len]
+
 
 class Deployer:
     def __init__(self, naming, destination):
@@ -118,7 +121,7 @@ class Deployer:
         return True
 
     def process(self, album):
-        print "Moving album to %s" % album.newPath
+        print("Moving album to %s" % album.newPath)
         if not os.path.isdir(album.newPath):
             os.makedirs(album.newPath)
         for record in album.files():

@@ -2,15 +2,19 @@ import re
 import os
 from data import Query
 
+
 BLACKLIST = ["Various Artists", "Original Soundtrack", None, "", Query.MULTIPLE]
 DISALLOWED = re.compile('[\\\\/:?*]')
 
+
 def escape(filename):
-    print u"Escaping '{}'".format(filename)
+    print(u"Escaping '{}'".format(filename))
     return DISALLOWED.sub('_', filename)
+
 
 def isset(value):
     return value != None and value != '' and value != Query.MULTIPLE and value != False
+
 
 class ArchiveNaming:
     def updateArtist(self, album, file):

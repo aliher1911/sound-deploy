@@ -4,6 +4,7 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC
 import mutagen.flac
 
+
 class UpdatableTag:
     def setArtist(self, artist):
         self._newArtist = artist
@@ -123,7 +124,9 @@ class Mp3Tags(UpdatableTag):
         if updated:
             new_tags.save(filename)
 
+            
 YEAR_EXTRACT = re.compile(".*(\\d{4}).*")
+
 
 class FlacTags(UpdatableTag):
     NEW_TAG_MAP = {
@@ -201,6 +204,7 @@ class FlacTags(UpdatableTag):
         if updated:
             new_tags.save(filename)
 
+            
 # Aggregation result
 class Aggregate:
     # values as collected from files, unique
@@ -226,9 +230,11 @@ class Aggregate:
     def nonEmpty(self):
         return filter(lambda x: x, self._values)
 
+    
 class Query:
     MULTIPLE = object()
 
+    
 class Album:
     def __init__(self, path):
         # contains orig_filename, new_filename, tags object

@@ -2,12 +2,15 @@ import re
 import os
 from data import Query
 
+
 BLACKLIST = ["Various Artists", "Original Soundtrack", None, "", Query.MULTIPLE]
 DISALLOWED = re.compile('[\\\\/:?*]')
 
+
 def escape(filename):
-    print u"Escaping '{}'".format(filename)
+    print(u"Escaping '{}'".format(filename))
     return DISALLOWED.sub('_', filename)
+
 
 class FiioNaming:
     def updateArtist(self, album, file):
@@ -15,26 +18,26 @@ class FiioNaming:
         album_artist = album.all_same('albumArtist')
         compilation = album.all_same('compilation')
         soundtrack = album.all_same('soundtrack')
-        print 'Soundtrack {}'.format(soundtrack)
+        print("Soundtrack {}".format(soundtrack))
 
         # if compilation
-        print "Compilation '{}'".format(compilation)
+        print("Compilation '{}'".format(compilation))
         if compilation != None or artist == Query.MULTIPLE or album_artist == Query.MULTIPLE:
-            print "Detected compilation"
+            print("Detected compilation")
             # if soundtrack set artist to soundtrack
             if soundtrack:
-                print "Soundtrack goes to separate location"
+                print("Soundtrack goes to separate location")
                 file.setArtist("Soundtracks")
             # if album artist is set on all tracks, set album artist as artist, don't go special
             elif not album_artist in BLACKLIST:
-                print "Album artist is same or track artist is set {}/{}".format(album_artist, artist)
+                print("Album artist is same or track artist is set {}/{}".format(album_artist, artist))
                 file.setArtist(album_artist)
             # else set artist to compilation
             else:  
-                print "Plain compilation goes to separate location"
+                print("Plain compilation goes to separate location")
                 file.setArtist("Compilations")
         else:
-            print "Detected Artist disc"
+            print("Detected Artist disc")
             # else if artist not same, set artist to album artist
             if artist == Query.MULTIPLE:
                 file.setArtist(album_artist)
@@ -42,6 +45,7 @@ class FiioNaming:
                 file.setArtist(artist)
         return True
 
+    
     def updateAlbum(self, album, file):
         artist = album.all_same('trackArtist')
         album_artist = album.all_same('albumArtist')
@@ -79,13 +83,14 @@ class FiioNaming:
         file.setAlbum(newAlbum)
         return True
 
+    
     def updateTitle(self, album, file):
         artist = album.all_same('trackArtist')
         album_artist = album.all_same('albumArtist')
         current_artist = file.trackArtist()
-        print u"Atrist {}".format(artist)
-        print u"AAtrist {}".format(album_artist)
-        print u"CAtrist {}".format(current_artist)
+        print(u"Atrist {}".format(artist))
+        print(u"AAtrist {}".format(album_artist))
+        print(u"CAtrist {}".format(current_artist))
         # if album artist is different from artist or track artist is different, set title to title/track artist
         if (current_artist and album_artist and current_artist != album_artist) or artist == Query.MULTIPLE:
             file.setTrackName(file.trackName() + "/" + current_artist)
@@ -93,6 +98,7 @@ class FiioNaming:
             file.setTrackName(file.trackName())
         return True
 
+    
     def updateTrackNum(self, album, file):
         # if total cd > 1, add 100 * cdnum to track num
         total_discs = album.all_same('totalDiscs')
@@ -102,6 +108,7 @@ class FiioNaming:
             file.setTrackNumber("{:02}".format(int(file.trackNumber())))
         return True
 
+    
     # This should update both album base and files
     def setPath(self, album, file, destination):
         # new artist + new album / new track names

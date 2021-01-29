@@ -97,3 +97,6 @@ Mp3Checker
 # Default data directories
 Samples
 Destination
+
+# Emacs temp files
+*~
