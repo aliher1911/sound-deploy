@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+from data import apply_tags
 
 
 # # Validate tags and return list of dicts with all new things
@@ -103,7 +104,13 @@ def trim(filename, extension):
 
 class Deployer:
     def __init__(self, naming, destination):
+        """
+        naming - naming scheme to apply to files
+        process - function that would transform the file and provide new destination name
+        destination - base destination for processing???
+        """
         self._naming = naming
+        #self._process = process
         self._destination = destination
 
     # need to: set artist, album, track, tracknum
@@ -120,15 +127,16 @@ class Deployer:
             if not self._naming.setPath(album, file, self._destination): return False
         return True
 
-    def process(self, album):
+    def process(self, album, file_filter=None):
         print("Moving album to %s" % album.newPath)
         if not os.path.isdir(album.newPath):
             os.makedirs(album.newPath)
         for record in album.files():
             file = record[2]
-            dest = os.path.join(album.newPath, trim(file.newFilename, file.type()) + file.type())
-            shutil.copy(record[0], dest)
-            file.apply_tags(dest)
+            if file_filter is None or file_filter(file):
+                dest = os.path.join(album.newPath, trim(file.newFilename, file.type()) + file.type())
+                shutil.copy(record[0], dest)
+                apply_tags(file, dest)
 
         # print "======================================"
         # print album.newPath

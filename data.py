@@ -32,6 +32,7 @@ class UpdatableTag:
 
 
 class Mp3Tags(UpdatableTag):
+    
     def __init__(self, filename):
         self.tags = mutagen.mp3.MP3(filename)
         self._artist = None
@@ -104,26 +105,6 @@ class Mp3Tags(UpdatableTag):
                     return True
         return False
 
-    # maybe pass updates instead of hacking the file?
-    def apply_tags(self, filename):
-        new_tags = mutagen.mp3.MP3(filename)
-        updated = False
-        if hasattr(self, '_newArtist'):
-            new_tags['TPE1'] = mutagen.id3.TPE1(encoding=3, text=self._newArtist)
-            updated = True
-        if hasattr(self, '_newTrackName'):
-            new_tags['TIT2'] = mutagen.id3.TIT2(encoding=3, text=self._newTrackName)
-            updated = True
-        if hasattr(self, '_newAlbum'):
-            new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self._newAlbum)
-            updated = True
-        # we are overwriting total tracks with empty
-        if hasattr(self, '_newTrackNumber'):
-            new_tags['TRCK'] = mutagen.id3.TRCK(encoding=3, text=self._newTrackNumber)
-            updated = True
-        if updated:
-            new_tags.save(filename)
-
             
 YEAR_EXTRACT = re.compile(".*(\\d{4}).*")
 
@@ -192,17 +173,6 @@ class FlacTags(UpdatableTag):
         comm = self._tag('comment')
         desc = self._tag('description')
         return comm and comm.lower().find(name) != -1 or desc and desc.lower().find(name) != -1
-
-    # maybe pass updates instead of hacking the file?
-    def apply_tags(self, filename):
-        new_tags = mutagen.flac.FLAC(filename)
-        updated = False
-        for k,v in FlacTags.NEW_TAG_MAP.iteritems():
-            if hasattr(self, k):
-               new_tags[v] = getattr(self, k)
-               updated = True
-        if updated:
-            new_tags.save(filename)
 
             
 # Aggregation result
@@ -273,3 +243,59 @@ class Album:
     def path(self):
         return self._path
 
+
+class FlacUpdater:
+    NEW_TAG_MAP = {
+        '_newArtist': 'artist',
+        '_newTrackName': 'title',
+        '_newAlbum': 'album',
+        '_newTrackNumber': 'tracknumber'
+    }
+
+    def __init__(self, destination):
+        self._destination = destination
+
+    def apply_tags(self, update):
+        new_tags = mutagen.flac.FLAC(self._destination)
+        updated = False
+        for k,v in FlacUpdater.NEW_TAG_MAP.items():
+            if hasattr(update, k):
+                new_tags[v] = getattr(update, k)
+                updated = True
+        if updated:
+            new_tags.save(self._destination)
+
+
+class Mp3Updater:
+    def __init__(self, destination):
+        self._destination = destination
+
+    def apply_tags(self, update):
+        new_tags = mutagen.mp3.MP3(self._destination)
+        updated = False
+        if hasattr(self, '_newArtist'):
+            new_tags['TPE1'] = mutagen.id3.TPE1(encoding=3, text=self._newArtist)
+            updated = True
+        if hasattr(self, '_newTrackName'):
+            new_tags['TIT2'] = mutagen.id3.TIT2(encoding=3, text=self._newTrackName)
+            updated = True
+        if hasattr(self, '_newAlbum'):
+            new_tags['TALB'] = mutagen.id3.TALB(encoding=3, text=self._newAlbum)
+            updated = True
+        # we are overwriting total tracks with empty
+        if hasattr(self, '_newTrackNumber'):
+            new_tags['TRCK'] = mutagen.id3.TRCK(encoding=3, text=self._newTrackNumber)
+            updated = True
+        if updated:
+            new_tags.save(self._destination)
+
+                   
+def apply_tags(updateable_tags, destination_name):
+    upcase = destination_name.upper()
+    if upcase.endswith('.MP3'):
+        updater = Mp3Updater(destination_name)
+    elif upcase.endswith('.FLAC'):
+        updater = FlacUpdater(destination_name)
+    else:
+        return
+    updater.apply_tags(updateable_tags)

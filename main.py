@@ -40,8 +40,8 @@ def scan_directory(path, files):
         
 def recursive(root):
     """
-    Iterate file system tree
-    returns iterator
+    Iterate file system tree with os.walk
+    returns iterator 
     """
     print("Scanning '" + root + "' recursively")
     def iterate():
@@ -52,7 +52,7 @@ def recursive(root):
 
 def single(root):
     """
-    Iterate single directory content
+    Iterate single directory content simulating os.walk behaviour
     returns iterator
     """
     print("Scanning " + root)
@@ -79,12 +79,12 @@ def directory_scanner(source, history, dir_reader):
     return generate
 
 
-def process_albums(processor, scanner, history):
+def process_albums(processor, scanner, history, filter=None):
     for album in scanner():
         if not processor.prepare(album):
             print("Failed to prepare " + album.path())
             continue
-        if not processor.process(album):
+        if not processor.process(album, filter):
             print("Failed to process " + album.path())
             continue
         history.remember(album.path())
@@ -132,6 +132,7 @@ def main():
 
     if args.a == 'deploy':
         naming = FiioNaming() if args.d == 'fiio' else ArchiveNaming()
+        # This is some BS leftovers
         processor = Deployer(naming, args.dst) if args.a == 'deploy' else Tagger(pre_defined)
     else:
         # This will fail

@@ -16,6 +16,13 @@ def isset(value):
     return value != None and value != '' and value != Query.MULTIPLE and value != False
 
 
+def as_int(value):
+    try:
+        return int(value)
+    except ValueError:
+        return 0
+
+
 class ArchiveNaming:
     def updateArtist(self, album, file):
         return True
@@ -60,7 +67,7 @@ class ArchiveNaming:
             album_path = year + "-" + file.getNewAlbum()
         else:
             album_path = file.getNewAlbum()
-        if isset(total_discs) and total_discs > 1 or disc > 1:
+        if isset(total_discs) and as_int(total_discs) > 1 or isset(disc) and as_int(disc) > 1:
             album_path += " [Disc {}]".format(disc)
         if isset(live):
             album_path += " [Live]"
