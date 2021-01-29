@@ -110,9 +110,14 @@ class FiioNaming:
 
     
     # This should update both album base and files
-    def setPath(self, album, file, destination):
+    def setPath(self, album, record, destination):
+        """
+        album - album containing track
+        record - file info containing original filename, new filename, tags
+        destination - destination directory
+        """
         # new artist + new album / new track names
-        file.newFilename = escape(file.getNewTrackNumber() + '-' + file.getNewTrackName())
+        record.newFilename = escape(record.tags.getNewTrackNumber() + '-' + record.tags.getNewTrackName())
 
         # workaround case where album artist and artist are consistent and different
         artist = album.all_same('trackArtist')
@@ -122,5 +127,5 @@ class FiioNaming:
         else:
             artistPath = artist
 
-        album.newPath = os.path.join(destination, escape(artistPath), escape(file.getNewAlbum()))
+        album.newPath = os.path.join(destination, escape(artistPath), escape(record.tags.getNewAlbum()))
         return True

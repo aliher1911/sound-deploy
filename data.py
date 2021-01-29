@@ -204,6 +204,13 @@ class Aggregate:
 class Query:
     MULTIPLE = object()
 
+
+class AlbumTrack:
+    def __init__(self, filename, tags):
+        self.filename = filename
+        self.newFilename = None
+        self.tags = tags
+        
     
 class Album:
     def __init__(self, path):
@@ -212,7 +219,7 @@ class Album:
         self._path = path
 
     def add(self, filename, tags):
-        self._files.append([filename, '', tags])
+        self._files.append(AlbumTrack(filename, tags))
 
     def empty(self):
         return len(self._files) == 0
@@ -230,11 +237,11 @@ class Album:
         return filter(lambda x: x, self.query(read))
 
     def all_values(self, read):
-        return filter(lambda x: x, set(map(lambda x: read(x[2]), self._files)))
+        return filter(lambda x: x, set(map(lambda x: read(x.tags), self._files)))
 
     # All unique values including Nulls, utility fn
     def query(self, read):
-        func = (lambda x: getattr(x[2], read)()) if isinstance(read, str) else (lambda x: read(x[2]))
+        func = (lambda x: getattr(x.tags, read)()) if isinstance(read, str) else (lambda x: read(x.tags))
         return list(set(map(func, self._files)))
 
     def files(self):

@@ -37,7 +37,12 @@ class ArchiveNaming:
         return True
 
     # This should update both album base and files
-    def setPath(self, album, file, destination):
+    def setPath(self, album, record, destination):
+        """
+        album - album containing track
+        record - file info containing original filename, new filename, tags
+        destination - destination directory
+        """
         artist = album.all_same('trackArtist')
         album_artist = album.all_same('albumArtist')
         compilation = album.all_same('compilation')
@@ -51,22 +56,22 @@ class ArchiveNaming:
         # make artist location
         if album_artist in BLACKLIST:
             if isset(soundtrack):
-                atrist_path = 'Soundtracks'
+                artist_path = 'Soundtracks'
             elif isset(compilation):
-                atrist_path = 'Compilations'
+                artist_path = 'Compilations'
             elif not artist in BLACKLIST:
-                atrist_path = artist
+                artist_path = artist
             else:
                 # Fallback to compilations in that case
-                atrist_path = 'Compilations'
+                artist_path = 'Compilations'
         else:
-            atrist_path = album_artist
+            artist_path = album_artist
 
         # make disc location
         if isset(year):
-            album_path = year + "-" + file.getNewAlbum()
+            album_path = year + "-" + record.tags.getNewAlbum()
         else:
-            album_path = file.getNewAlbum()
+            album_path = record.tags.getNewAlbum()
         if isset(total_discs) and as_int(total_discs) > 1 or isset(disc) and as_int(disc) > 1:
             album_path += " [Disc {}]".format(disc)
         if isset(live):
@@ -76,11 +81,11 @@ class ArchiveNaming:
 
         # new artist + new album / new track names
         try:
-            trackNum = "{:02}".format(int(file.getNewTrackNumber()))
+            trackNum = "{:02}".format(int(record.tags.getNewTrackNumber()))
         except:
-            trackNum = file.getNewTrackNumber()
-        file.newFilename = escape(trackNum + '-' + file.getNewTrackName())
+            trackNum = record.tags.getNewTrackNumber()
+        record.newFilename = escape(trackNum + '-' + record.tags.getNewTrackName())
 
         # need to build proper path
-        album.newPath = os.path.join(destination, escape(atrist_path), escape(album_path))
+        album.newPath = os.path.join(destination, escape(artist_path), escape(album_path))
         return True

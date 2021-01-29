@@ -79,6 +79,11 @@ def directory_scanner(source, history, dir_reader):
     return generate
 
 
+# Main processing loop:
+# for each album
+#  - album is scanned - tags read for all files in album directory
+#  - album is prepared - tags are processed to guess album type etc
+#  - album is processed - based on collected and guessed info it is copied to other location and tags are updated
 def process_albums(processor, scanner, history, filter=None):
     for album in scanner():
         if not processor.prepare(album):
