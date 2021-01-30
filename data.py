@@ -206,6 +206,7 @@ class Query:
 
 
 class AlbumTrack:
+    # TODO: filename is full path, need to refactor
     def __init__(self, filename, tags):
         self.filename = filename
         self.newFilename = None

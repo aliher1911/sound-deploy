@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Service
+Icon=document-send
+X-KDE-ServiceTypes=KonqPopupMenu/Plugin
+MimeType=inode/directory;audio/mp3;audio/flac;
+Actions=copyToCar
+Encoding=UTF-8
+X-KDE-Priority=TopLevel
+
+[Desktop Action copyToCar]
+Name=Copy files to car sound drive
+Icon=document-send
+Exec=/home/ali/Projects/SoundDeploy/action.sh %F

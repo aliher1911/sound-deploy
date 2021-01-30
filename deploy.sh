@@ -11,4 +11,4 @@ activator="${script_dir}/venv/bin/activate"
 
 PYTHONPATH="${script_dir}"
 
-python "${script_dir}/main.py" $@
+python "${script_dir}/main.py" "$@"

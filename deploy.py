@@ -40,8 +40,7 @@ class Deployer:
         if not os.path.isdir(album.newPath):
             os.makedirs(album.newPath)
         for record in album.files():
-            file = record.tags
-            if file_filter is None or file_filter(record):
+            if file_filter is None or file_filter(album.path(), record.filename):
                 dest_template = os.path.join(album.newPath,
                                     trim(record.newFilename, record.tags.type()))
                 dest = self._processor.process_file(record.filename, dest_template)
