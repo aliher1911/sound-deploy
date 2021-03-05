@@ -13,9 +13,11 @@ PYTHONPATH="${script_dir}"
 
 tmpfile=$(mktemp /tmp/copy-to-car.XXXXXX)
 
-if ! python "${script_dir}/main.py" -a deploy -d archive -p mp3 "$@" "/media/${USER}/4955-ED4E" 2>$tmpfile ; then
+dest="/media/${USER}/4955-ED4E"
+
+if ! python "${script_dir}/main.py" -a deploy -d archive -p mp3 "$@" "${dest}" 2>$tmpfile ; then
     zenity --error --text="Failed to copy files. Error log in '${tmpfile}'" --no-wrap
 else
     rm ${tmpfile}
-    zenity --info --text="Copy complete" --no-wrap
+    zenity --info --text="Copy '${@}' to '${dest}' complete" --no-wrap
 fi
