@@ -7,9 +7,13 @@ if ! command -v shntool &>/dev/null ; then
   echo "Error: shntool not found. Please install shntool package or make sure shntool is in the path"
   satisfied=
 fi
-if ! command -v cuetag &>/dev/null ; then
-  echo "Error: cuetag not found. Please install cuetools or make sure cuetag is in the path"
-  satisfied=
+cuetag=cuetag
+if ! command -v "${cuetag}" &>/dev/null ; then
+  cuetag=cuetag.sh
+  if ! command -v "${cuetag}" &>/dev/null ; then
+    echo "Error: cuetag or cuetag.sh not found. Please install cuetools or make sure cuetag is in the path"
+    satisfied=
+  fi
 fi
 
 [ -z "${satisfied}" ] && echo "Please correct errors above and retry" && exit 2
@@ -39,6 +43,6 @@ mkdir -p "${name}"
 echo "Splitting to tracks"
 shntool split -f "${cue_path}" -o "flac flac -s -5 -o %f -" -t "%n-%t" -d "${name}" "${flac_path}"
 echo "Applying common tags"
-cuetag "${cue_path}" "${name}"/*.flac
+"${cuetag}" "${cue_path}" "${name}"/*.flac
 echo "Done"
 
