@@ -138,6 +138,9 @@ class FlacTags(UpdatableTag):
 
     def year(self):
         date = self._tag('date')
+        if date is None:
+            # work around some weird tracks that use year instead or date
+            return self._tag('year')
         m = YEAR_EXTRACT.match(date)
         return m.group(1) if m else date
 
